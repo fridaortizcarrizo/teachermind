@@ -1,1 +1,7 @@
 project_id = "luuemeyvywyatqeojyeq"
+
+[functions.parse-questionnaire]
+verify_jwt = false
+
+[functions.parse-lesson-pdf]
+verify_jwt = false
