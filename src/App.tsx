@@ -12,6 +12,7 @@ import ClassHistory from "./pages/ClassHistory";
 import LessonGenerator from "./pages/LessonGenerator";
 import MaterialGenerator from "./pages/MaterialGenerator";
 import LessonPlans from "./pages/LessonPlans";
+import CalendarPage from "./pages/CalendarPage";
 import ProgressTracking from "./pages/ProgressTracking";
 import SearchPage from "./pages/Search";
 import Settings from "./pages/Settings";
@@ -43,6 +44,7 @@ function ProtectedRoutes() {
         <Route path="/generate-lesson" element={<LessonGenerator />} />
         <Route path="/generate-material" element={<MaterialGenerator />} />
         <Route path="/plans" element={<LessonPlans />} />
+        <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/progress" element={<ProgressTracking />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/settings" element={<Settings />} />

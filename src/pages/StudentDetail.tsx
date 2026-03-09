@@ -9,7 +9,9 @@ import { useLessons } from "@/hooks/useLessons";
 import { useGrammarTopics } from "@/hooks/useGrammarTopics";
 import { useVocabulary } from "@/hooks/useVocabulary";
 import { useProgressNotes } from "@/hooks/useProgressNotes";
-import { ArrowLeft, Sparkles, BookOpen, AlertCircle, CheckCircle2, Clock, FileUp, ClipboardPaste } from "lucide-react";
+import { ArrowLeft, Sparkles, BookOpen, AlertCircle, CheckCircle2, Clock, FileUp, ClipboardPaste, Layers } from "lucide-react";
+import { useActiveBlock } from "@/hooks/useLessonBlocks";
+import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { ImportLessonsDialog } from "@/components/students/ImportLessonsDialog";
 import { ImportQuestionnaireDialog } from "@/components/students/ImportQuestionnaireDialog";
@@ -29,6 +31,7 @@ export default function StudentDetail() {
   const { data: studentGrammar = [] } = useGrammarTopics(id);
   const { data: studentVocab = [] } = useVocabulary(id);
   const { data: studentNotes = [] } = useProgressNotes(id);
+  const activeBlock = useActiveBlock(id);
   const [importLessonsOpen, setImportLessonsOpen] = useState(false);
   const [importQuestionnaireOpen, setImportQuestionnaireOpen] = useState(false);
 
@@ -86,6 +89,26 @@ export default function StudentDetail() {
           </Button>
         </div>
       </GlassCard>
+
+      {/* Active Block Info */}
+      {activeBlock && (
+        <GlassCard variant="subtle" className="flex items-center gap-4">
+          <Layers className="h-5 w-5 text-primary shrink-0" />
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-semibold text-sm">{activeBlock.title}</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-800">active</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Progress value={(activeBlock.lessons_completed / activeBlock.size) * 100} className="h-2 flex-1" />
+              <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                {activeBlock.lessons_completed}/{activeBlock.size} clases
+                {activeBlock.size - activeBlock.lessons_completed <= 2 && " ⚠️"}
+              </span>
+            </div>
+          </div>
+        </GlassCard>
+      )}
 
       <Tabs defaultValue="history">
         <TabsList className="bg-white/10 backdrop-blur-sm border border-white/20">

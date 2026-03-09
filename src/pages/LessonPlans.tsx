@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlassBadge } from "@/components/ui/glass-badge";
 import { Progress } from "@/components/ui/progress";
@@ -6,10 +7,12 @@ import { useLessonBlocks } from "@/hooks/useLessonBlocks";
 import { useStudents } from "@/hooks/useStudents";
 import { Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CreateBlockDialog } from "@/components/lessons/CreateBlockDialog";
 
 export default function LessonPlans() {
   const { data: lessonBlocks = [], isLoading } = useLessonBlocks();
   const { data: students = [] } = useStudents();
+  const [createOpen, setCreateOpen] = useState(false);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -18,7 +21,9 @@ export default function LessonPlans() {
           <h1 className="text-3xl font-bold tracking-tight">Lesson Plans</h1>
           <p className="text-muted-foreground mt-1">Manage lesson blocks and long-term planning</p>
         </div>
-        <Button className="gap-2 rounded-xl"><Layers className="h-4 w-4" />New Block</Button>
+        <Button className="gap-2 rounded-xl" onClick={() => setCreateOpen(true)}>
+          <Layers className="h-4 w-4" />New Block
+        </Button>
       </div>
 
       {isLoading ? (
@@ -32,6 +37,7 @@ export default function LessonPlans() {
           {lessonBlocks.map((block) => {
             const student = students.find((s) => s.id === block.student_id);
             const progress = (block.lessons_completed / block.size) * 100;
+            const remaining = block.size - block.lessons_completed;
             return (
               <GlassCard key={block.id}>
                 <div className="flex items-start justify-between mb-3">
@@ -42,14 +48,14 @@ export default function LessonPlans() {
                     </div>
                     {student && <p className="text-sm text-muted-foreground">{student.name}</p>}
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${block.status === 'active' ? 'bg-emerald-500/20 text-emerald-800' : 'bg-muted text-muted-foreground'}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${block.status === 'active' ? 'bg-emerald-500/20 text-emerald-800' : block.status === 'completed' ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
                     {block.status}
                   </span>
                 </div>
                 <div className="mb-3">
                   <div className="flex items-center justify-between text-sm mb-1">
                     <span className="text-muted-foreground">Progress</span>
-                    <span className="font-semibold">{block.lessons_completed} / {block.size} lessons</span>
+                    <span className="font-semibold">{block.lessons_completed} / {block.size} lessons {remaining <= 2 && block.status === 'active' && `⚠️ ${remaining} left`}</span>
                   </div>
                   <Progress value={progress} className="h-2" />
                 </div>
@@ -75,6 +81,8 @@ export default function LessonPlans() {
           })}
         </div>
       )}
+
+      <CreateBlockDialog open={createOpen} onOpenChange={setCreateOpen} />
     </div>
   );
 }

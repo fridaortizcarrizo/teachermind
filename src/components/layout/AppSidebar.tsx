@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, History, Sparkles, FileText, Layers,
-  TrendingUp, Search, Settings, BookOpen, LogOut,
+  TrendingUp, Search, Settings, BookOpen, LogOut, CalendarDays,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -16,6 +16,7 @@ const mainItems = [
   { title: "Students", url: "/students", icon: Users },
   { title: "Class History", url: "/history", icon: History },
   { title: "Lesson Plans", url: "/plans", icon: Layers },
+  { title: "Calendar", url: "/calendar", icon: CalendarDays },
 ];
 
 const aiItems = [
