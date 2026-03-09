@@ -47,7 +47,7 @@ export default function Settings() {
       ) : (
         <div className="space-y-6">
           {professionalModules.map((mod) => {
-            const categories = (mod.categories as ModuleCategory[]) || [];
+            const categories = (mod.categories as unknown as ModuleCategory[]) || [];
             return (
               <GlassCard key={mod.id}>
                 <div className="flex items-center gap-2 mb-4">
