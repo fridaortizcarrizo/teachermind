@@ -1,12 +1,14 @@
 import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlassBadge } from "@/components/ui/glass-badge";
 import { Calendar } from "@/components/ui/calendar";
 import { useLessons } from "@/hooks/useLessons";
 import { useStudents } from "@/hooks/useStudents";
+import { useLessonBlocks } from "@/hooks/useLessonBlocks";
 import { format, isSameDay, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { Clock, BookOpen } from "lucide-react";
+import { Clock, BookOpen, ChevronRight } from "lucide-react";
 
 export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
