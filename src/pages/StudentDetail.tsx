@@ -31,6 +31,7 @@ export default function StudentDetail() {
   const { data: studentGrammar = [] } = useGrammarTopics(id);
   const { data: studentVocab = [] } = useVocabulary(id);
   const { data: studentNotes = [] } = useProgressNotes(id);
+  const activeBlock = useActiveBlock(id);
   const [importLessonsOpen, setImportLessonsOpen] = useState(false);
   const [importQuestionnaireOpen, setImportQuestionnaireOpen] = useState(false);
 
