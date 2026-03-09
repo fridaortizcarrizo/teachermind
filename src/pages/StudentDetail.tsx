@@ -10,7 +10,7 @@ import { useGrammarTopics } from "@/hooks/useGrammarTopics";
 import { useVocabulary } from "@/hooks/useVocabulary";
 import { useProgressNotes } from "@/hooks/useProgressNotes";
 import { ArrowLeft, Sparkles, BookOpen, AlertCircle, CheckCircle2, Clock, FileUp, ClipboardPaste, Layers } from "lucide-react";
-import { useActiveBlock } from "@/hooks/useLessonBlocks";
+import { useActiveBlock, useLessonBlocks, useBlockLessonCounts } from "@/hooks/useLessonBlocks";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { ImportLessonsDialog } from "@/components/students/ImportLessonsDialog";

@@ -29,10 +29,25 @@ export default function LessonDetail() {
     mutationFn: async () => {
       const { error } = await supabase.from("lessons").update({ status: "completed" }).eq("id", id!);
       if (error) throw error;
+      // If lesson belongs to a block, increment its counter
+      if (lesson?.block_id) {
+        const { data: block } = await supabase.from("lesson_blocks").select("lessons_completed, size").eq("id", lesson.block_id).single();
+        if (block) {
+          const newCompleted = block.lessons_completed + 1;
+          const updates: any = { lessons_completed: newCompleted };
+          if (newCompleted >= block.size) {
+            updates.status = "completed";
+            updates.end_date = new Date().toISOString().split("T")[0];
+          }
+          await supabase.from("lesson_blocks").update(updates).eq("id", lesson.block_id);
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["lesson", id] });
       qc.invalidateQueries({ queryKey: ["lessons"] });
+      qc.invalidateQueries({ queryKey: ["lesson_blocks"] });
+      qc.invalidateQueries({ queryKey: ["block_lesson_counts"] });
       toast({ title: "✅ Clase marcada como completada" });
     },
   });
