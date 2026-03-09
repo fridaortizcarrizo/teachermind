@@ -23,7 +23,7 @@ export default function Students() {
           <h1 className="text-3xl font-bold tracking-tight">Students</h1>
           <p className="text-muted-foreground mt-1">Manage your student profiles</p>
         </div>
-        <Button className="gap-2 rounded-xl"><Plus className="h-4 w-4" />Add Student</Button>
+        <Button className="gap-2 rounded-xl" onClick={() => setAddOpen(true)}><Plus className="h-4 w-4" />Add Student</Button>
       </div>
 
       {isLoading ? (
