@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlassBadge } from "@/components/ui/glass-badge";
@@ -7,8 +8,10 @@ import { useLessonBlocks } from "@/hooks/useLessonBlocks";
 import { BookOpen, CheckCircle2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AddStudentDialog } from "@/components/students/AddStudentDialog";
 
 export default function Students() {
+  const [addOpen, setAddOpen] = useState(false);
   const { data: students = [], isLoading } = useStudents();
   const { data: lessons = [] } = useLessons();
   const { data: lessonBlocks = [] } = useLessonBlocks();
@@ -20,7 +23,7 @@ export default function Students() {
           <h1 className="text-3xl font-bold tracking-tight">Students</h1>
           <p className="text-muted-foreground mt-1">Manage your student profiles</p>
         </div>
-        <Button className="gap-2 rounded-xl"><Plus className="h-4 w-4" />Add Student</Button>
+        <Button className="gap-2 rounded-xl" onClick={() => setAddOpen(true)}><Plus className="h-4 w-4" />Add Student</Button>
       </div>
 
       {isLoading ? (
@@ -66,6 +69,8 @@ export default function Students() {
           })}
         </div>
       )}
+
+      <AddStudentDialog open={addOpen} onOpenChange={setAddOpen} />
     </div>
   );
 }
