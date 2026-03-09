@@ -69,6 +69,8 @@ export default function Students() {
           })}
         </div>
       )}
+
+      <AddStudentDialog open={addOpen} onOpenChange={setAddOpen} />
     </div>
   );
 }
