@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, History, Sparkles, FileText, Layers,
-  TrendingUp, Search, Settings, BookOpen, LogOut,
+  TrendingUp, Search, Settings, BookOpen, LogOut, CalendarDays,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
