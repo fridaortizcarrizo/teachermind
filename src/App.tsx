@@ -13,6 +13,7 @@ import LessonGenerator from "./pages/LessonGenerator";
 import MaterialGenerator from "./pages/MaterialGenerator";
 import LessonPlans from "./pages/LessonPlans";
 import CalendarPage from "./pages/CalendarPage";
+import LessonDetail from "./pages/LessonDetail";
 import ProgressTracking from "./pages/ProgressTracking";
 import SearchPage from "./pages/Search";
 import Settings from "./pages/Settings";
