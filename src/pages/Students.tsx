@@ -5,13 +5,15 @@ import { GlassBadge } from "@/components/ui/glass-badge";
 import { useStudents } from "@/hooks/useStudents";
 import { useLessons } from "@/hooks/useLessons";
 import { useLessonBlocks } from "@/hooks/useLessonBlocks";
-import { BookOpen, CheckCircle2, Plus } from "lucide-react";
+import { BookOpen, CheckCircle2, Plus, ClipboardPaste } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AddStudentDialog } from "@/components/students/AddStudentDialog";
+import { ImportQuestionnaireDialog } from "@/components/students/ImportQuestionnaireDialog";
 
 export default function Students() {
   const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const { data: students = [], isLoading } = useStudents();
   const { data: lessons = [] } = useLessons();
   const { data: lessonBlocks = [] } = useLessonBlocks();
@@ -23,7 +25,14 @@ export default function Students() {
           <h1 className="text-3xl font-bold tracking-tight">Students</h1>
           <p className="text-muted-foreground mt-1">Manage your student profiles</p>
         </div>
-        <Button className="gap-2 rounded-xl" onClick={() => setAddOpen(true)}><Plus className="h-4 w-4" />Add Student</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2 rounded-xl" onClick={() => setImportOpen(true)}>
+            <ClipboardPaste className="h-4 w-4" />Importar cuestionario
+          </Button>
+          <Button className="gap-2 rounded-xl" onClick={() => setAddOpen(true)}>
+            <Plus className="h-4 w-4" />Add Student
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -71,6 +80,7 @@ export default function Students() {
       )}
 
       <AddStudentDialog open={addOpen} onOpenChange={setAddOpen} />
+      <ImportQuestionnaireDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   );
 }

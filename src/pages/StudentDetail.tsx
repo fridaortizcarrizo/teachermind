@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlassBadge } from "@/components/ui/glass-badge";
@@ -8,8 +9,10 @@ import { useLessons } from "@/hooks/useLessons";
 import { useGrammarTopics } from "@/hooks/useGrammarTopics";
 import { useVocabulary } from "@/hooks/useVocabulary";
 import { useProgressNotes } from "@/hooks/useProgressNotes";
-import { ArrowLeft, Sparkles, BookOpen, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { ArrowLeft, Sparkles, BookOpen, AlertCircle, CheckCircle2, Clock, FileUp, ClipboardPaste } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ImportLessonsDialog } from "@/components/students/ImportLessonsDialog";
+import { ImportQuestionnaireDialog } from "@/components/students/ImportQuestionnaireDialog";
 
 const grammarStatusColors: Record<string, string> = {
   consolidated: "bg-emerald-500/20 text-emerald-800",
@@ -26,6 +29,8 @@ export default function StudentDetail() {
   const { data: studentGrammar = [] } = useGrammarTopics(id);
   const { data: studentVocab = [] } = useVocabulary(id);
   const { data: studentNotes = [] } = useProgressNotes(id);
+  const [importLessonsOpen, setImportLessonsOpen] = useState(false);
+  const [importQuestionnaireOpen, setImportQuestionnaireOpen] = useState(false);
 
   if (isLoading) return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -69,9 +74,17 @@ export default function StudentDetail() {
           </div>
           {student.notes && <p className="text-sm text-muted-foreground mt-3 italic">📝 {student.notes}</p>}
         </div>
-        <Link to="/generate-lesson">
-          <Button className="gap-2 rounded-xl shrink-0"><Sparkles className="h-4 w-4" />Generate Lesson</Button>
-        </Link>
+        <div className="flex flex-col gap-2 shrink-0">
+          <Link to="/generate-lesson">
+            <Button className="gap-2 rounded-xl w-full"><Sparkles className="h-4 w-4" />Generate Lesson</Button>
+          </Link>
+          <Button variant="outline" className="gap-2 rounded-xl" onClick={() => setImportQuestionnaireOpen(true)}>
+            <ClipboardPaste className="h-4 w-4" />Actualizar perfil
+          </Button>
+          <Button variant="outline" className="gap-2 rounded-xl" onClick={() => setImportLessonsOpen(true)}>
+            <FileUp className="h-4 w-4" />Importar clases
+          </Button>
+        </div>
       </GlassCard>
 
       <Tabs defaultValue="history">
@@ -153,6 +166,18 @@ export default function StudentDetail() {
           ))}
         </TabsContent>
       </Tabs>
+
+      <ImportLessonsDialog
+        open={importLessonsOpen}
+        onOpenChange={setImportLessonsOpen}
+        studentId={student.id}
+        studentName={student.name}
+      />
+      <ImportQuestionnaireDialog
+        open={importQuestionnaireOpen}
+        onOpenChange={setImportQuestionnaireOpen}
+        studentId={student.id}
+      />
     </div>
   );
 }
