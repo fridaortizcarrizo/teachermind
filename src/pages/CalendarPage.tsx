@@ -14,6 +14,7 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { data: lessons = [] } = useLessons();
   const { data: students = [] } = useStudents();
+  const { data: blocks = [] } = useLessonBlocks();
 
   const lessonDates = useMemo(() => {
     const dates = new Set<string>();
