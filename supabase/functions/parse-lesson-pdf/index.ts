@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import pdfParse from "npm:pdf-parse@1.1.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,9 +33,32 @@ serve(async (req) => {
     }
     const userId = claimsData.claims.sub;
 
-    const { studentId, pdfText } = await req.json();
-    if (!studentId || !pdfText) {
-      return new Response(JSON.stringify({ error: "studentId and pdfText are required" }), {
+    const body = await req.json();
+    const { studentId, pdfText, pdfBase64 } = body;
+
+    if (!studentId) {
+      return new Response(JSON.stringify({ error: "studentId is required" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Extract text from PDF base64 or use provided text
+    let textContent = pdfText || "";
+    if (pdfBase64 && !textContent) {
+      try {
+        const pdfBuffer = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
+        const parsed = await pdfParse(pdfBuffer);
+        textContent = parsed.text;
+      } catch (e) {
+        console.error("PDF parse error:", e);
+        return new Response(JSON.stringify({ error: "No se pudo leer el PDF. Intentá pegar el texto manualmente." }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    if (!textContent.trim()) {
+      return new Response(JSON.stringify({ error: "No text content found" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -65,7 +89,7 @@ The text may be in Spanish or English. Extract all information regardless of lan
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: pdfText },
+          { role: "user", content: textContent },
         ],
         tools: [
           {
@@ -169,11 +193,8 @@ The text may be in Spanish or English. Extract all information regardless of lan
     if (!toolCall) throw new Error("No tool call in AI response");
 
     const extracted = JSON.parse(toolCall.function.arguments);
-
-    // Batch insert all extracted data
     const errors: string[] = [];
 
-    // Insert lessons
     if (extracted.lessons?.length > 0) {
       const lessonsToInsert = extracted.lessons.map((l: any) => ({
         student_id: studentId,
@@ -195,7 +216,6 @@ The text may be in Spanish or English. Extract all information regardless of lan
       if (error) errors.push(`Lessons: ${error.message}`);
     }
 
-    // Insert grammar topics
     if (extracted.grammar_topics?.length > 0) {
       const grammarToInsert = extracted.grammar_topics.map((g: any) => ({
         student_id: studentId,
@@ -210,7 +230,6 @@ The text may be in Spanish or English. Extract all information regardless of lan
       if (error) errors.push(`Grammar: ${error.message}`);
     }
 
-    // Insert vocabulary
     if (extracted.vocabulary?.length > 0) {
       const vocabToInsert = extracted.vocabulary.map((v: any) => ({
         student_id: studentId,
@@ -225,7 +244,6 @@ The text may be in Spanish or English. Extract all information regardless of lan
       if (error) errors.push(`Vocabulary: ${error.message}`);
     }
 
-    // Insert progress notes
     if (extracted.progress_notes?.length > 0) {
       const notesToInsert = extracted.progress_notes.map((n: any) => ({
         student_id: studentId,

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, FileUp, FileText } from "lucide-react";
+import { Loader2, FileUp, FileText, X } from "lucide-react";
 
 interface ImportLessonsDialogProps {
   open: boolean;
@@ -18,44 +18,59 @@ interface ImportLessonsDialogProps {
 export function ImportLessonsDialog({ open, onOpenChange, studentId, studentName }: ImportLessonsDialogProps) {
   const [text, setText] = useState("");
   const [isParsing, setIsParsing] = useState(false);
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const f = e.target.files?.[0];
+    if (!f) return;
 
-    setFileName(file.name);
+    if (f.type === "application/pdf" || f.name.endsWith(".pdf")) {
+      setFile(f);
+      setText(""); // clear text since we'll use the PDF directly
+      return;
+    }
 
-    if (file.type === "text/plain" || file.name.endsWith(".txt") || file.name.endsWith(".md")) {
-      const content = await file.text();
+    if (f.type === "text/plain" || f.name.endsWith(".txt") || f.name.endsWith(".md")) {
+      const content = await f.text();
       setText(content);
+      setFile(null);
       return;
     }
 
-    // For PDFs, we read as text (basic extraction) or tell user to paste
-    if (file.type === "application/pdf") {
-      toast.info("Para PDFs, copiá el texto del documento y pegalo en el campo de abajo.");
-      setFileName(null);
-      return;
-    }
+    toast.error("Formato no soportado. Usá PDF o .txt");
+  };
 
-    toast.error("Formato no soportado. Usá .txt o pegá el contenido directamente.");
-    setFileName(null);
+  const removeFile = () => {
+    setFile(null);
+    if (fileRef.current) fileRef.current.value = "";
   };
 
   const handleImport = async () => {
-    if (!text.trim()) {
-      toast.error("Pegá el contenido de las clases primero");
+    if (!text.trim() && !file) {
+      toast.error("Subí un PDF o pegá el texto de las clases");
       return;
     }
 
     setIsParsing(true);
     try {
-      const { data, error } = await supabase.functions.invoke("parse-lesson-pdf", {
-        body: { studentId, pdfText: text.trim() },
-      });
+      let body: Record<string, any> = { studentId };
+
+      if (file) {
+        // Convert PDF to base64
+        const arrayBuffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        body.pdfBase64 = btoa(binary);
+      } else {
+        body.pdfText = text.trim();
+      }
+
+      const { data, error } = await supabase.functions.invoke("parse-lesson-pdf", { body });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -73,14 +88,13 @@ export function ImportLessonsDialog({ open, onOpenChange, studentId, studentName
         data.errors.forEach((e: string) => toast.warning(e));
       }
 
-      // Invalidate all related queries
       qc.invalidateQueries({ queryKey: ["lessons"] });
       qc.invalidateQueries({ queryKey: ["grammar_topics"] });
       qc.invalidateQueries({ queryKey: ["vocabulary"] });
       qc.invalidateQueries({ queryKey: ["progress_notes"] });
 
       setText("");
-      setFileName(null);
+      setFile(null);
       onOpenChange(false);
     } catch (e: any) {
       console.error("Import lessons error:", e);
@@ -99,50 +113,65 @@ export function ImportLessonsDialog({ open, onOpenChange, studentId, studentName
             Importar historial de clases — {studentName}
           </DialogTitle>
           <DialogDescription>
-            Pegá el contenido del PDF de clases y la IA extraerá lecciones, gramática, vocabulario y observaciones.
+            Subí el PDF de clases o pegá el texto. La IA extraerá lecciones, gramática, vocabulario y observaciones.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Subir archivo (opcional)</Label>
-            <div
-              className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => fileRef.current?.click()}
-            >
-              <FileText className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">
-                {fileName ? fileName : "Hacé clic para subir un .txt, o pegá el texto abajo"}
-              </p>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".txt,.md,.pdf"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="lessons-text">Contenido de las clases</Label>
-            <Textarea
-              id="lessons-text"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder={`Pegá acá el contenido del PDF de historial de clases...\n\nEjemplo:\nLesson 1 — "This is Me"\nDate: 11/02/2025\nObjective: Introduce basic personal information...\nGrammar: Present Simple (to be)\n...`}
-              rows={14}
-              className="font-mono text-sm"
+            <Label>Subir PDF</Label>
+            {file ? (
+              <div className="flex items-center gap-3 border border-border rounded-xl p-4 bg-secondary/30">
+                <FileText className="h-8 w-8 text-primary shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{file.name}</p>
+                  <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB</p>
+                </div>
+                <Button variant="ghost" size="icon" onClick={removeFile} className="shrink-0">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div
+                className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => fileRef.current?.click()}
+              >
+                <FileUp className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                <p className="text-sm font-medium">Hacé clic para subir un PDF</p>
+                <p className="text-xs text-muted-foreground mt-1">o arrastrá el archivo acá</p>
+              </div>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".pdf,.txt,.md"
+              className="hidden"
+              onChange={handleFileChange}
             />
           </div>
-          <p className="text-xs text-muted-foreground">
-            💡 Copiá el texto completo del PDF y pegalo acá. La IA extraerá todas las clases, gramática, vocabulario y observaciones automáticamente.
-          </p>
+
+          {!file && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-xs text-muted-foreground">o pegá el texto</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+              <Textarea
+                id="lessons-text"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Pegá acá el contenido del historial de clases..."
+                rows={10}
+                className="font-mono text-sm"
+              />
+            </div>
+          )}
         </div>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleImport} disabled={isParsing || !text.trim()} className="gap-2">
+          <Button onClick={handleImport} disabled={isParsing || (!text.trim() && !file)} className="gap-2">
             {isParsing ? <><Loader2 className="h-4 w-4 animate-spin" />Procesando...</> : "Importar con IA"}
           </Button>
         </DialogFooter>
