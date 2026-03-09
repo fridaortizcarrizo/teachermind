@@ -32,6 +32,8 @@ export default function StudentDetail() {
   const { data: studentVocab = [] } = useVocabulary(id);
   const { data: studentNotes = [] } = useProgressNotes(id);
   const activeBlock = useActiveBlock(id);
+  const activeBlockIds = activeBlock ? [activeBlock.id] : [];
+  const { data: blockCounts = {} } = useBlockLessonCounts(activeBlockIds);
   const [importLessonsOpen, setImportLessonsOpen] = useState(false);
   const [importQuestionnaireOpen, setImportQuestionnaireOpen] = useState(false);
 
