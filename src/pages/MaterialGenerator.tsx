@@ -3,7 +3,10 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Sparkles, Loader2, FileText } from "lucide-react";
+import { Sparkles, Loader2, FileText, Check, Copy } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
 import type { CEFRLevel, MaterialType } from "@/types";
 
 const materialTypes: { value: MaterialType; label: string }[] = [
@@ -20,21 +23,64 @@ const materialTypes: { value: MaterialType; label: string }[] = [
 
 const levels: CEFRLevel[] = ["A1", "A2", "B1", "B2"];
 
-const mockMaterial = {
-  title: "Architecture Vocabulary: Fill in the Blanks",
-  content: `Complete the sentences with the correct word from the box.\n\nWord box: blueprint | facade | sustainable | renovate | layout\n\n1. The architect is working on a new _______ for the building.\n2. The _______ of the office includes three meeting rooms.\n3. They want to _______ the old library and make it modern.\n4. The _______ of the building is made of glass and steel.\n5. We need to use _______ materials for the new project.\n\n---\n\nAnswer Key (Teacher Guide):\n1. blueprint\n2. layout\n3. renovate\n4. facade\n5. sustainable`,
-};
+interface GeneratedMaterial {
+  title: string;
+  content: string;
+}
 
 export default function MaterialGenerator() {
+  const { user } = useAuth();
   const [type, setType] = useState("");
   const [level, setLevel] = useState("");
   const [topic, setTopic] = useState("");
   const [generating, setGenerating] = useState(false);
-  const [generated, setGenerated] = useState(false);
+  const [generated, setGenerated] = useState<GeneratedMaterial | null>(null);
+  const [saved, setSaved] = useState(false);
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setGenerating(true);
-    setTimeout(() => { setGenerating(false); setGenerated(true); }, 1500);
+    setGenerated(null);
+    setSaved(false);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-material", {
+        body: { type, level, topic },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      setGenerated(data as GeneratedMaterial);
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: "Error generating material", description: e.message, variant: "destructive" });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!generated || !user) return;
+    try {
+      const { error } = await supabase.from("materials").insert({
+        user_id: user.id,
+        title: generated.title,
+        content: generated.content,
+        type: type as MaterialType,
+        level: level as CEFRLevel,
+        topic: topic || "general",
+      });
+      if (error) throw error;
+      setSaved(true);
+      toast({ title: "Material saved!" });
+    } catch (e: any) {
+      toast({ title: "Error saving", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleCopy = () => {
+    if (!generated) return;
+    navigator.clipboard.writeText(`${generated.title}\n\n${generated.content}`);
+    toast({ title: "Copied to clipboard!" });
   };
 
   return (
@@ -80,15 +126,19 @@ export default function MaterialGenerator() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-bold font-display">{mockMaterial.title}</h2>
+              <h2 className="text-lg font-bold font-display">{generated.title}</h2>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="rounded-xl">Export PDF</Button>
-              <Button variant="outline" size="sm" className="rounded-xl">Copy</Button>
-              <Button size="sm" className="rounded-xl">Save</Button>
+              <Button variant="outline" size="sm" className="rounded-xl gap-1" onClick={handleCopy}>
+                <Copy className="h-3.5 w-3.5" /> Copy
+              </Button>
+              <Button size="sm" className="rounded-xl gap-1" onClick={handleSave} disabled={saved}>
+                {saved && <Check className="h-3.5 w-3.5" />}
+                {saved ? "Saved" : "Save"}
+              </Button>
             </div>
           </div>
-          <p className="text-sm whitespace-pre-line">{mockMaterial.content}</p>
+          <p className="text-sm whitespace-pre-line">{generated.content}</p>
         </GlassCard>
       )}
     </div>

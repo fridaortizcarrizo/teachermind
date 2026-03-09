@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.parse-lesson-pdf]
 verify_jwt = false
+
+[functions.generate-lesson]
+verify_jwt = false
+
+[functions.generate-material]
+verify_jwt = false
