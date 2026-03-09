@@ -16,6 +16,7 @@ const mainItems = [
   { title: "Students", url: "/students", icon: Users },
   { title: "Class History", url: "/history", icon: History },
   { title: "Lesson Plans", url: "/plans", icon: Layers },
+  { title: "Calendar", url: "/calendar", icon: CalendarDays },
 ];
 
 const aiItems = [
