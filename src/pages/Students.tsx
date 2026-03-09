@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlassBadge } from "@/components/ui/glass-badge";
@@ -7,6 +8,7 @@ import { useLessonBlocks } from "@/hooks/useLessonBlocks";
 import { BookOpen, CheckCircle2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AddStudentDialog } from "@/components/students/AddStudentDialog";
 
 export default function Students() {
   const { data: students = [], isLoading } = useStudents();
