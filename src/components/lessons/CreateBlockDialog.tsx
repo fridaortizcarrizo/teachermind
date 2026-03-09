@@ -27,6 +27,21 @@ export function CreateBlockDialog({ open, onOpenChange, preselectedStudentId }: 
   const [size, setSize] = useState(8);
   const [objectives, setObjectives] = useState("");
   const [startDate, setStartDate] = useState<Date>(new Date());
+  const [weeklyFrequency, setWeeklyFrequency] = useState(2);
+  const [classDays, setClassDays] = useState<string[]>([]);
+
+  const dayOptions = [
+    { value: "monday", label: "Lun" },
+    { value: "tuesday", label: "Mar" },
+    { value: "wednesday", label: "Mié" },
+    { value: "thursday", label: "Jue" },
+    { value: "friday", label: "Vie" },
+    { value: "saturday", label: "Sáb" },
+  ];
+
+  const toggleDay = (day: string) => {
+    setClassDays((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]);
+  };
 
   const handleSubmit = async () => {
     if (!studentId || !title) return;
@@ -37,7 +52,9 @@ export function CreateBlockDialog({ open, onOpenChange, preselectedStudentId }: 
         size,
         objectives: objectives.split(",").map((o) => o.trim()).filter(Boolean),
         start_date: format(startDate, "yyyy-MM-dd"),
-      });
+        weekly_frequency: weeklyFrequency,
+        class_days: classDays,
+      } as any);
       toast({ title: "Bloque creado", description: `${title} — ${size} clases` });
       onOpenChange(false);
       setTitle("");
