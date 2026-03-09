@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import pdfParse from "npm:pdf-parse@1.1.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,32 +32,9 @@ serve(async (req) => {
     }
     const userId = claimsData.claims.sub;
 
-    const body = await req.json();
-    const { studentId, pdfText, pdfBase64 } = body;
-
-    if (!studentId) {
-      return new Response(JSON.stringify({ error: "studentId is required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Extract text from PDF base64 or use provided text
-    let textContent = pdfText || "";
-    if (pdfBase64 && !textContent) {
-      try {
-        const pdfBuffer = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
-        const parsed = await pdfParse(pdfBuffer);
-        textContent = parsed.text;
-      } catch (e) {
-        console.error("PDF parse error:", e);
-        return new Response(JSON.stringify({ error: "No se pudo leer el PDF. Intentá pegar el texto manualmente." }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-    }
-
-    if (!textContent.trim()) {
-      return new Response(JSON.stringify({ error: "No text content found" }), {
+    const { studentId, pdfText } = await req.json();
+    if (!studentId || !pdfText?.trim()) {
+      return new Response(JSON.stringify({ error: "studentId and pdfText are required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -77,7 +53,7 @@ For vocabulary status: use "new", "practicing", or "consolidated".
 For lesson status: use "completed" for past lessons.
 For note types: use "observation" for general notes, "milestone" for achievements.
 
-The text may be in Spanish or English. Extract all information regardless of language.`;
+The text may be in Spanish or English.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -89,7 +65,7 @@ The text may be in Spanish or English. Extract all information regardless of lan
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: textContent },
+          { role: "user", content: pdfText },
         ],
         tools: [
           {
@@ -196,63 +172,51 @@ The text may be in Spanish or English. Extract all information regardless of lan
     const errors: string[] = [];
 
     if (extracted.lessons?.length > 0) {
-      const lessonsToInsert = extracted.lessons.map((l: any) => ({
-        student_id: studentId,
-        user_id: userId,
-        title: l.title,
-        date: l.date,
-        objective: l.objective || "",
-        warm_up: l.warm_up || "",
-        grammar_focus: l.grammar_focus || [],
-        grammar_explanation: l.grammar_explanation || "",
-        vocabulary_focus: l.vocabulary_focus || [],
-        exercises: l.exercises || [],
-        speaking_task: l.speaking_task || "",
-        homework: l.homework || "",
-        observations: l.observations || null,
-        status: l.status || "completed",
-      }));
-      const { error } = await supabase.from("lessons").insert(lessonsToInsert);
+      const { error } = await supabase.from("lessons").insert(
+        extracted.lessons.map((l: any) => ({
+          student_id: studentId, user_id: userId,
+          title: l.title, date: l.date, objective: l.objective || "",
+          warm_up: l.warm_up || "", grammar_focus: l.grammar_focus || [],
+          grammar_explanation: l.grammar_explanation || "",
+          vocabulary_focus: l.vocabulary_focus || [], exercises: l.exercises || [],
+          speaking_task: l.speaking_task || "", homework: l.homework || "",
+          observations: l.observations || null, status: l.status || "completed",
+        }))
+      );
       if (error) errors.push(`Lessons: ${error.message}`);
     }
 
     if (extracted.grammar_topics?.length > 0) {
-      const grammarToInsert = extracted.grammar_topics.map((g: any) => ({
-        student_id: studentId,
-        user_id: userId,
-        topic: g.topic,
-        status: g.status || "introduced",
-        times_worked: g.times_worked || 1,
-        last_worked: g.last_worked || null,
-        errors: g.errors || [],
-      }));
-      const { error } = await supabase.from("grammar_topics").insert(grammarToInsert);
+      const { error } = await supabase.from("grammar_topics").insert(
+        extracted.grammar_topics.map((g: any) => ({
+          student_id: studentId, user_id: userId,
+          topic: g.topic, status: g.status || "introduced",
+          times_worked: g.times_worked || 1, last_worked: g.last_worked || null,
+          errors: g.errors || [],
+        }))
+      );
       if (error) errors.push(`Grammar: ${error.message}`);
     }
 
     if (extracted.vocabulary?.length > 0) {
-      const vocabToInsert = extracted.vocabulary.map((v: any) => ({
-        student_id: studentId,
-        user_id: userId,
-        word: v.word,
-        translation: v.translation || null,
-        category: v.category || "",
-        status: v.status || "new",
-        context: v.context || null,
-      }));
-      const { error } = await supabase.from("vocabulary").insert(vocabToInsert);
+      const { error } = await supabase.from("vocabulary").insert(
+        extracted.vocabulary.map((v: any) => ({
+          student_id: studentId, user_id: userId,
+          word: v.word, translation: v.translation || null,
+          category: v.category || "", status: v.status || "new",
+          context: v.context || null,
+        }))
+      );
       if (error) errors.push(`Vocabulary: ${error.message}`);
     }
 
     if (extracted.progress_notes?.length > 0) {
-      const notesToInsert = extracted.progress_notes.map((n: any) => ({
-        student_id: studentId,
-        user_id: userId,
-        content: n.content,
-        date: n.date,
-        type: n.type || "observation",
-      }));
-      const { error } = await supabase.from("progress_notes").insert(notesToInsert);
+      const { error } = await supabase.from("progress_notes").insert(
+        extracted.progress_notes.map((n: any) => ({
+          student_id: studentId, user_id: userId,
+          content: n.content, date: n.date, type: n.type || "observation",
+        }))
+      );
       if (error) errors.push(`Progress notes: ${error.message}`);
     }
 
@@ -265,14 +229,11 @@ The text may be in Spanish or English. Extract all information regardless of lan
         progress_notes: extracted.progress_notes?.length || 0,
       },
       errors: errors.length > 0 ? errors : undefined,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("parse-lesson-pdf error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
