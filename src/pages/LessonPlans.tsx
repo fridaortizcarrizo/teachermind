@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlassBadge } from "@/components/ui/glass-badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useLessonBlocks } from "@/hooks/useLessonBlocks";
+import { useLessonBlocks, useBlockLessonCounts } from "@/hooks/useLessonBlocks";
 import { useStudents } from "@/hooks/useStudents";
 import { Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,9 @@ export default function LessonPlans() {
   const { data: lessonBlocks = [], isLoading } = useLessonBlocks();
   const { data: students = [] } = useStudents();
   const [createOpen, setCreateOpen] = useState(false);
+
+  const blockIds = useMemo(() => lessonBlocks.map((b) => b.id), [lessonBlocks]);
+  const { data: blockCounts = {} } = useBlockLessonCounts(blockIds);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -36,8 +39,10 @@ export default function LessonPlans() {
         <div className="space-y-4">
           {lessonBlocks.map((block) => {
             const student = students.find((s) => s.id === block.student_id);
-            const progress = (block.lessons_completed / block.size) * 100;
-            const remaining = block.size - block.lessons_completed;
+            const counts = blockCounts[block.id];
+            const realCompleted = counts?.total ?? block.lessons_completed;
+            const progress = (realCompleted / block.size) * 100;
+            const remaining = block.size - realCompleted;
             return (
               <GlassCard key={block.id}>
                 <div className="flex items-start justify-between mb-3">
@@ -55,7 +60,7 @@ export default function LessonPlans() {
                 <div className="mb-3">
                   <div className="flex items-center justify-between text-sm mb-1">
                     <span className="text-muted-foreground">Progress</span>
-                    <span className="font-semibold">{block.lessons_completed} / {block.size} lessons {remaining <= 2 && block.status === 'active' && `⚠️ ${remaining} left`}</span>
+                    <span className="font-semibold">{realCompleted} / {block.size} lessons {remaining <= 2 && block.status === 'active' && `⚠️ ${remaining} left`}</span>
                   </div>
                   <Progress value={progress} className="h-2" />
                 </div>
@@ -70,14 +75,17 @@ export default function LessonPlans() {
                 <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                   <span>Inicio: {block.start_date}</span>
                   {block.end_date && <span>· Fin: {block.end_date}</span>}
-                  {(block as any).weekly_frequency && <span>· {(block as any).weekly_frequency}x/sem</span>}
-                  {((block as any).class_days ?? []).length > 0 && (
-                    <span>· {((block as any).class_days as string[]).map((d: string) => d.slice(0, 3)).join(", ")}</span>
+                  {block.weekly_frequency && <span>· {block.weekly_frequency}x/sem</span>}
+                  {(block.class_days ?? []).length > 0 && (
+                    <span>· {block.class_days.map((d: string) => {
+                      const labels: Record<string, string> = { monday: "Lun", tuesday: "Mar", wednesday: "Mié", thursday: "Jue", friday: "Vie", saturday: "Sáb" };
+                      return labels[d] || d;
+                    }).join(", ")}</span>
                   )}
                 </div>
                 <div className="flex gap-1 mt-4">
                   {Array.from({ length: block.size }).map((_, i) => (
-                    <div key={i} className={`flex-1 h-2 rounded-full ${i < block.lessons_completed ? 'bg-primary' : 'bg-muted'}`} />
+                    <div key={i} className={`flex-1 h-2 rounded-full ${i < realCompleted ? 'bg-primary' : 'bg-muted'}`} />
                   ))}
                 </div>
               </GlassCard>

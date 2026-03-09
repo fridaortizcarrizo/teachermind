@@ -1,26 +1,34 @@
-import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlassBadge } from "@/components/ui/glass-badge";
 import { Calendar } from "@/components/ui/calendar";
 import { useLessons } from "@/hooks/useLessons";
 import { useStudents } from "@/hooks/useStudents";
-import { useLessonBlocks } from "@/hooks/useLessonBlocks";
-import { format, isSameDay, parseISO } from "date-fns";
+import { useLessonBlocks, useBlockLessonCounts } from "@/hooks/useLessonBlocks";
+import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { Clock, BookOpen, ChevronRight } from "lucide-react";
+import { Clock, BookOpen, ChevronRight, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function CalendarPage() {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const { data: lessons = [] } = useLessons();
   const { data: students = [] } = useStudents();
   const { data: blocks = [] } = useLessonBlocks();
 
-  const lessonDates = useMemo(() => {
-    const dates = new Set<string>();
-    lessons.forEach((l) => dates.add(l.date));
-    return dates;
-  }, [lessons]);
+  const blockIds = useMemo(() => blocks.map((b) => b.id), [blocks]);
+  const { data: blockCounts = {} } = useBlockLessonCounts(blockIds);
+
+  // Default to the most recent lesson's month
+  useEffect(() => {
+    if (!selectedDate && lessons.length > 0) {
+      const sorted = [...lessons].sort((a, b) => b.date.localeCompare(a.date));
+      setSelectedDate(parseISO(sorted[0].date));
+    } else if (!selectedDate) {
+      setSelectedDate(new Date());
+    }
+  }, [lessons, selectedDate]);
 
   const lessonsOnDate = useMemo(() => {
     if (!selectedDate) return [];
@@ -44,6 +52,15 @@ export default function CalendarPage() {
     completed: { backgroundColor: "hsl(var(--primary) / 0.6)", color: "white", borderRadius: "50%" },
   };
 
+  const navigate = useNavigate();
+
+  const handleAddLesson = () => {
+    if (selectedDate) {
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
+      navigate(`/generate-lesson?date=${dateStr}`);
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div>
@@ -57,6 +74,7 @@ export default function CalendarPage() {
             mode="single"
             selected={selectedDate}
             onSelect={(d) => d && setSelectedDate(d)}
+            defaultMonth={selectedDate}
             modifiers={modifiers}
             modifiersStyles={modifiersStyles}
             className="p-3 pointer-events-auto"
@@ -72,18 +90,27 @@ export default function CalendarPage() {
         </GlassCard>
 
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold">
-            {selectedDate ? format(selectedDate, "EEEE d 'de' MMMM", { locale: es }) : "Seleccioná un día"}
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">
+              {selectedDate ? format(selectedDate, "EEEE d 'de' MMMM", { locale: es }) : "Seleccioná un día"}
+            </h2>
+            <Button size="sm" variant="outline" className="gap-1 rounded-xl" onClick={handleAddLesson}>
+              <Plus className="h-4 w-4" /> Nueva clase
+            </Button>
+          </div>
 
           {lessonsOnDate.length === 0 ? (
             <GlassCard variant="subtle" className="text-center py-8">
               <p className="text-muted-foreground">No hay clases este día</p>
+              <Button variant="ghost" size="sm" className="mt-2 gap-1" onClick={handleAddLesson}>
+                <Plus className="h-4 w-4" /> Agregar clase
+              </Button>
             </GlassCard>
           ) : (
             lessonsOnDate.map((lesson) => {
               const student = students.find((s) => s.id === lesson.student_id);
               const block = lesson.block_id ? blocks.find((b) => b.id === lesson.block_id) : null;
+              const counts = block ? blockCounts[block.id] : null;
               return (
                 <Link key={lesson.id} to={`/lessons/${lesson.id}`} className="block">
                   <GlassCard variant="subtle" className="hover:ring-1 hover:ring-primary/30 transition-all cursor-pointer">
@@ -108,9 +135,9 @@ export default function CalendarPage() {
                           <span key={g} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary">{g}</span>
                         ))}
                       </div>
-                      {block && (
+                      {block && counts && (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground whitespace-nowrap">
-                          Clase {block.lessons_completed}/{block.size}
+                          Clase {counts.total}/{block.size}
                         </span>
                       )}
                     </div>
