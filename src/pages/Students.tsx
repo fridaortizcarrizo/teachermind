@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AddStudentDialog } from "@/components/students/AddStudentDialog";
 
 export default function Students() {
+  const [addOpen, setAddOpen] = useState(false);
   const { data: students = [], isLoading } = useStudents();
   const { data: lessons = [] } = useLessons();
   const { data: lessonBlocks = [] } = useLessonBlocks();
