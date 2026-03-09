@@ -119,7 +119,8 @@
   }
 
   .glass-subtle {
-    @apply bg-white/8 backdrop-blur-lg border border-white/10 shadow-md;
+    background: rgba(255, 255, 255, 0.08);
+    @apply backdrop-blur-lg border border-white/10 shadow-md;
   }
 
   .glass-dark {
