@@ -63,6 +63,7 @@ export type Database = {
       }
       lesson_blocks: {
         Row: {
+          class_days: string[]
           created_at: string
           end_date: string | null
           id: string
@@ -75,8 +76,10 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          weekly_frequency: number
         }
         Insert: {
+          class_days?: string[]
           created_at?: string
           end_date?: string | null
           id?: string
@@ -89,8 +92,10 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          weekly_frequency?: number
         }
         Update: {
+          class_days?: string[]
           created_at?: string
           end_date?: string | null
           id?: string
@@ -103,6 +108,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          weekly_frequency?: number
         }
         Relationships: [
           {

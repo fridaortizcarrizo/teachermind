@@ -67,9 +67,13 @@ export default function LessonPlans() {
                     ))}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span>Started: {block.start_date}</span>
-                  {block.end_date && <span>· Ends: {block.end_date}</span>}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                  <span>Inicio: {block.start_date}</span>
+                  {block.end_date && <span>· Fin: {block.end_date}</span>}
+                  {(block as any).weekly_frequency && <span>· {(block as any).weekly_frequency}x/sem</span>}
+                  {((block as any).class_days ?? []).length > 0 && (
+                    <span>· {((block as any).class_days as string[]).map((d: string) => d.slice(0, 3)).join(", ")}</span>
+                  )}
                 </div>
                 <div className="flex gap-1 mt-4">
                   {Array.from({ length: block.size }).map((_, i) => (

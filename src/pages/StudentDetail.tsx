@@ -106,6 +106,15 @@ export default function StudentDetail() {
                 {activeBlock.size - activeBlock.lessons_completed <= 2 && " ⚠️"}
               </span>
             </div>
+            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+              {(activeBlock as any).weekly_frequency && <span>{(activeBlock as any).weekly_frequency}x/sem</span>}
+              {((activeBlock as any).class_days ?? []).length > 0 && (
+                <span>· {((activeBlock as any).class_days as string[]).map((d: string) => {
+                  const labels: Record<string, string> = { monday: "Lun", tuesday: "Mar", wednesday: "Mié", thursday: "Jue", friday: "Vie", saturday: "Sáb" };
+                  return labels[d] || d;
+                }).join(", ")}</span>
+              )}
+            </div>
           </div>
         </GlassCard>
       )}

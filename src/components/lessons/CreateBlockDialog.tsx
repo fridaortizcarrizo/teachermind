@@ -27,6 +27,21 @@ export function CreateBlockDialog({ open, onOpenChange, preselectedStudentId }: 
   const [size, setSize] = useState(8);
   const [objectives, setObjectives] = useState("");
   const [startDate, setStartDate] = useState<Date>(new Date());
+  const [weeklyFrequency, setWeeklyFrequency] = useState(2);
+  const [classDays, setClassDays] = useState<string[]>([]);
+
+  const dayOptions = [
+    { value: "monday", label: "Lun" },
+    { value: "tuesday", label: "Mar" },
+    { value: "wednesday", label: "Mié" },
+    { value: "thursday", label: "Jue" },
+    { value: "friday", label: "Vie" },
+    { value: "saturday", label: "Sáb" },
+  ];
+
+  const toggleDay = (day: string) => {
+    setClassDays((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]);
+  };
 
   const handleSubmit = async () => {
     if (!studentId || !title) return;
@@ -37,7 +52,9 @@ export function CreateBlockDialog({ open, onOpenChange, preselectedStudentId }: 
         size,
         objectives: objectives.split(",").map((o) => o.trim()).filter(Boolean),
         start_date: format(startDate, "yyyy-MM-dd"),
-      });
+        weekly_frequency: weeklyFrequency,
+        class_days: classDays,
+      } as any);
       toast({ title: "Bloque creado", description: `${title} — ${size} clases` });
       onOpenChange(false);
       setTitle("");
@@ -93,6 +110,32 @@ export function CreateBlockDialog({ open, onOpenChange, preselectedStudentId }: 
                   <Calendar mode="single" selected={startDate} onSelect={(d) => d && setStartDate(d)} className="p-3 pointer-events-auto" />
                 </PopoverContent>
               </Popover>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Frecuencia semanal</Label>
+              <Select value={String(weeklyFrequency)} onValueChange={(v) => setWeeklyFrequency(Number(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4].map((n) => <SelectItem key={n} value={String(n)}>{n}x por semana</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Días de clase</Label>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {dayOptions.map((d) => (
+                  <button
+                    key={d.value}
+                    type="button"
+                    onClick={() => toggleDay(d.value)}
+                    className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${classDays.includes(d.value) ? "bg-primary text-primary-foreground border-primary" : "bg-muted text-muted-foreground border-border hover:bg-accent"}`}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <div>
