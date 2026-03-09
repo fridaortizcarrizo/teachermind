@@ -102,10 +102,10 @@ export default function StudentDetail() {
               <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-800">active</span>
             </div>
             <div className="flex items-center gap-3">
-              <Progress value={(activeBlock.lessons_completed / activeBlock.size) * 100} className="h-2 flex-1" />
+              <Progress value={((blockCounts[activeBlock.id]?.total ?? activeBlock.lessons_completed) / activeBlock.size) * 100} className="h-2 flex-1" />
               <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-                {activeBlock.lessons_completed}/{activeBlock.size} clases
-                {activeBlock.size - activeBlock.lessons_completed <= 2 && " ⚠️"}
+                {blockCounts[activeBlock.id]?.total ?? activeBlock.lessons_completed}/{activeBlock.size} clases
+                {activeBlock.size - (blockCounts[activeBlock.id]?.total ?? activeBlock.lessons_completed) <= 2 && " ⚠️"}
               </span>
             </div>
             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
