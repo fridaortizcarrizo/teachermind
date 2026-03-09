@@ -1,6 +1,7 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { Outlet } from "react-router-dom";
+import { AIChatWidget } from "@/components/chat/AIChatWidget";
 
 export function AppLayout() {
   return (
@@ -16,6 +17,7 @@ export function AppLayout() {
           </main>
         </div>
       </div>
+      <AIChatWidget />
     </SidebarProvider>
   );
 }

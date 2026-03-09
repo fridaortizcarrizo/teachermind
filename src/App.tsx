@@ -46,6 +46,7 @@ function ProtectedRoutes() {
         <Route path="/generate-material" element={<MaterialGenerator />} />
         <Route path="/plans" element={<LessonPlans />} />
         <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/lessons/:id" element={<LessonDetail />} />
         <Route path="/progress" element={<ProgressTracking />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/settings" element={<Settings />} />
