@@ -2,7 +2,12 @@ import { useParams, Link } from "react-router-dom";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlassBadge } from "@/components/ui/glass-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { students, lessons, grammarTopics, vocabulary, progressNotes } from "@/data/mock-data";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useStudent } from "@/hooks/useStudents";
+import { useLessons } from "@/hooks/useLessons";
+import { useGrammarTopics } from "@/hooks/useGrammarTopics";
+import { useVocabulary } from "@/hooks/useVocabulary";
+import { useProgressNotes } from "@/hooks/useProgressNotes";
 import { ArrowLeft, Sparkles, BookOpen, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -16,13 +21,20 @@ const grammarStatusColors: Record<string, string> = {
 
 export default function StudentDetail() {
   const { id } = useParams();
-  const student = students.find((s) => s.id === id);
-  if (!student) return <div className="p-8 text-center text-muted-foreground">Student not found</div>;
+  const { data: student, isLoading } = useStudent(id);
+  const { data: studentLessons = [] } = useLessons(id);
+  const { data: studentGrammar = [] } = useGrammarTopics(id);
+  const { data: studentVocab = [] } = useVocabulary(id);
+  const { data: studentNotes = [] } = useProgressNotes(id);
 
-  const studentLessons = lessons.filter((l) => l.studentId === id);
-  const studentGrammar = grammarTopics.filter((g) => g.studentId === id);
-  const studentVocab = vocabulary.filter((v) => v.studentId === id);
-  const studentNotes = progressNotes.filter((n) => n.studentId === id);
+  if (isLoading) return (
+    <div className="max-w-5xl mx-auto space-y-6">
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-48 rounded-2xl" />
+    </div>
+  );
+
+  if (!student) return <div className="p-8 text-center text-muted-foreground">Student not found</div>;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -30,7 +42,6 @@ export default function StudentDetail() {
         <ArrowLeft className="h-4 w-4" /> Back to Students
       </Link>
 
-      {/* Profile Header */}
       <GlassCard variant="strong" className="flex flex-col sm:flex-row items-start gap-6">
         <div className="h-16 w-16 rounded-2xl bg-primary/20 flex items-center justify-center text-primary font-bold text-xl font-display">
           {student.name.split(" ").map((n) => n[0]).join("")}
@@ -42,18 +53,18 @@ export default function StudentDetail() {
           </div>
           <p className="text-muted-foreground">{student.profession} · Age {student.age}</p>
           <div className="flex flex-wrap gap-1 mt-2">
-            {student.interests.map((i) => (
+            {(student.interests ?? []).map((i) => (
               <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">{i}</span>
             ))}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-1">Objectives</p>
-              <ul className="text-sm space-y-1">{student.objectives.map((o) => <li key={o} className="flex items-start gap-1"><CheckCircle2 className="h-3 w-3 mt-1 text-primary shrink-0" />{o}</li>)}</ul>
+              <ul className="text-sm space-y-1">{(student.objectives ?? []).map((o) => <li key={o} className="flex items-start gap-1"><CheckCircle2 className="h-3 w-3 mt-1 text-primary shrink-0" />{o}</li>)}</ul>
             </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-1">Difficulties</p>
-              <ul className="text-sm space-y-1">{student.difficulties.map((d) => <li key={d} className="flex items-start gap-1"><AlertCircle className="h-3 w-3 mt-1 text-destructive shrink-0" />{d}</li>)}</ul>
+              <ul className="text-sm space-y-1">{(student.difficulties ?? []).map((d) => <li key={d} className="flex items-start gap-1"><AlertCircle className="h-3 w-3 mt-1 text-destructive shrink-0" />{d}</li>)}</ul>
             </div>
           </div>
           {student.notes && <p className="text-sm text-muted-foreground mt-3 italic">📝 {student.notes}</p>}
@@ -63,7 +74,6 @@ export default function StudentDetail() {
         </Link>
       </GlassCard>
 
-      {/* Tabs */}
       <Tabs defaultValue="history">
         <TabsList className="bg-white/10 backdrop-blur-sm border border-white/20">
           <TabsTrigger value="history">Class History</TabsTrigger>
@@ -87,8 +97,8 @@ export default function StudentDetail() {
               </div>
               <p className="text-sm text-muted-foreground">{lesson.objective}</p>
               <div className="flex flex-wrap gap-1 mt-2">
-                {lesson.grammarFocus.map((g) => <span key={g} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary">{g}</span>)}
-                {lesson.vocabularyFocus.map((v) => <span key={v} className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent">{v}</span>)}
+                {(lesson.grammar_focus ?? []).map((g) => <span key={g} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary">{g}</span>)}
+                {(lesson.vocabulary_focus ?? []).map((v) => <span key={v} className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent">{v}</span>)}
               </div>
               {lesson.observations && <p className="text-xs text-muted-foreground mt-2 italic">💬 {lesson.observations}</p>}
             </GlassCard>
@@ -96,17 +106,18 @@ export default function StudentDetail() {
         </TabsContent>
 
         <TabsContent value="grammar" className="space-y-3 mt-4">
+          {studentGrammar.length === 0 && <p className="text-muted-foreground text-center py-8">No grammar topics tracked yet.</p>}
           {studentGrammar.map((g) => (
             <GlassCard key={g.id} variant="subtle" className="py-4">
               <div className="flex items-center justify-between mb-1">
                 <h3 className="font-semibold">{g.topic}</h3>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full ${grammarStatusColors[g.status]}`}>{g.status.replace("_", " ")}</span>
               </div>
-              <p className="text-xs text-muted-foreground">Worked {g.timesWorked}× · Last: {g.lastWorked}</p>
-              {g.errors.length > 0 && (
+              <p className="text-xs text-muted-foreground">Worked {g.times_worked}× · Last: {g.last_worked ?? "N/A"}</p>
+              {(g.errors ?? []).length > 0 && (
                 <div className="mt-2">
                   <p className="text-xs text-destructive font-medium">Recurring errors:</p>
-                  <ul className="text-xs text-muted-foreground">{g.errors.map((e) => <li key={e}>• {e}</li>)}</ul>
+                  <ul className="text-xs text-muted-foreground">{(g.errors ?? []).map((e) => <li key={e}>• {e}</li>)}</ul>
                 </div>
               )}
             </GlassCard>
@@ -114,6 +125,7 @@ export default function StudentDetail() {
         </TabsContent>
 
         <TabsContent value="vocabulary" className="mt-4">
+          {studentVocab.length === 0 && <p className="text-muted-foreground text-center py-8">No vocabulary items yet.</p>}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {studentVocab.map((v) => (
               <GlassCard key={v.id} variant="subtle" className="py-3 px-4">
@@ -129,6 +141,7 @@ export default function StudentDetail() {
         </TabsContent>
 
         <TabsContent value="progress" className="space-y-3 mt-4">
+          {studentNotes.length === 0 && <p className="text-muted-foreground text-center py-8">No progress notes yet.</p>}
           {studentNotes.map((n) => (
             <GlassCard key={n.id} variant="subtle" className="py-4">
               <div className="flex items-center gap-2 mb-1">

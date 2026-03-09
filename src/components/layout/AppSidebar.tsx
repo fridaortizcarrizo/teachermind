@@ -1,9 +1,10 @@
 import {
   LayoutDashboard, Users, History, Sparkles, FileText, Layers,
-  TrendingUp, Search, Settings, BookOpen,
+  TrendingUp, Search, Settings, BookOpen, LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
@@ -31,7 +32,6 @@ const trackItems = [
 function NavGroup({ label, items }: { label: string; items: typeof mainItems }) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const location = useLocation();
 
   return (
     <SidebarGroup>
@@ -62,6 +62,7 @@ function NavGroup({ label, items }: { label: string; items: typeof mainItems }) 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const { signOut, user } = useAuth();
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -78,6 +79,18 @@ export function AppSidebar() {
         <NavGroup label="AI Tools" items={aiItems} />
         <NavGroup label="Tracking" items={trackItems} />
       </SidebarContent>
+      <div className="mt-auto p-3 border-t border-sidebar-border">
+        {!collapsed && user && (
+          <p className="text-[10px] text-sidebar-foreground/50 truncate mb-2 px-1">{user.email}</p>
+        )}
+        <button
+          onClick={signOut}
+          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground w-full"
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          {!collapsed && <span>Sign Out</span>}
+        </button>
+      </div>
     </Sidebar>
   );
 }

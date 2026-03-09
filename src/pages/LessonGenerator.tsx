@@ -2,8 +2,9 @@ import { useState } from "react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlassBadge } from "@/components/ui/glass-badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { students } from "@/data/mock-data";
+import { useStudents } from "@/hooks/useStudents";
 import { Sparkles, Loader2, BookOpen, MessageSquare, PenLine, Home } from "lucide-react";
 
 const sectionIcons: Record<string, any> = {
@@ -28,6 +29,7 @@ const mockGeneratedLesson = {
 };
 
 export default function LessonGenerator() {
+  const { data: students = [], isLoading } = useStudents();
   const [selectedStudent, setSelectedStudent] = useState("");
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
@@ -36,10 +38,7 @@ export default function LessonGenerator() {
 
   const handleGenerate = () => {
     setGenerating(true);
-    setTimeout(() => {
-      setGenerating(false);
-      setGenerated(true);
-    }, 2000);
+    setTimeout(() => { setGenerating(false); setGenerated(true); }, 2000);
   };
 
   return (
@@ -53,22 +52,16 @@ export default function LessonGenerator() {
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <label className="text-sm font-medium mb-2 block">Select Student</label>
-            <Select value={selectedStudent} onValueChange={setSelectedStudent}>
-              <SelectTrigger className="bg-white/10 border-white/20 rounded-xl">
-                <SelectValue placeholder="Choose a student..." />
-              </SelectTrigger>
-              <SelectContent>
-                {students.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.name} ({s.level})</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {isLoading ? <Skeleton className="h-10 rounded-xl" /> : (
+              <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+                <SelectTrigger className="bg-white/10 border-white/20 rounded-xl"><SelectValue placeholder="Choose a student..." /></SelectTrigger>
+                <SelectContent>
+                  {students.map((s) => <SelectItem key={s.id} value={s.id}>{s.name} ({s.level})</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
           </div>
-          <Button
-            onClick={handleGenerate}
-            disabled={!selectedStudent || generating}
-            className="gap-2 rounded-xl self-end"
-          >
+          <Button onClick={handleGenerate} disabled={!selectedStudent || generating} className="gap-2 rounded-xl self-end">
             {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {generating ? "Generating..." : "Generate Lesson"}
           </Button>
@@ -81,7 +74,7 @@ export default function LessonGenerator() {
               <GlassBadge level={student.level} variant="level" />
               <span className="text-xs text-muted-foreground">{student.profession}</span>
             </div>
-            <p className="text-xs text-muted-foreground">Difficulties: {student.difficulties.join(", ")}</p>
+            <p className="text-xs text-muted-foreground">Difficulties: {(student.difficulties ?? []).join(", ")}</p>
           </div>
         )}
       </GlassCard>
@@ -100,10 +93,7 @@ export default function LessonGenerator() {
             const Icon = sectionIcons[section.name] || BookOpen;
             return (
               <GlassCard key={section.name} variant="subtle">
-                <div className="flex items-center gap-2 mb-3">
-                  <Icon className="h-4 w-4 text-primary" />
-                  <h3 className="font-semibold text-sm">{section.name}</h3>
-                </div>
+                <div className="flex items-center gap-2 mb-3"><Icon className="h-4 w-4 text-primary" /><h3 className="font-semibold text-sm">{section.name}</h3></div>
                 <p className="text-sm text-foreground whitespace-pre-line">{section.content}</p>
               </GlassCard>
             );
