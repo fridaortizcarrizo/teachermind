@@ -28,7 +28,7 @@ export function EditBlockDialog({ open, onOpenChange, block }: Props) {
   const [startDate, setStartDate] = useState<Date>(parseISO(block.start_date));
   const [weeklyFrequency, setWeeklyFrequency] = useState(block.weekly_frequency);
   const [classDays, setClassDays] = useState<string[]>(block.class_days);
-  const [status, setStatus] = useState(block.status);
+  const [status, setStatus] = useState<string>(block.status);
 
   useEffect(() => {
     setTitle(block.title);
