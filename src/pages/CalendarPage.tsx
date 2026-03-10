@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useLessons } from "@/hooks/useLessons";
+import { useLessons, useUpdateLesson } from "@/hooks/useLessons";
 import { useStudents } from "@/hooks/useStudents";
 import { useLessonBlocks } from "@/hooks/useLessonBlocks";
 import {
@@ -19,6 +19,7 @@ import {
 import { es } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const DAY_LABELS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
@@ -43,9 +44,11 @@ export default function CalendarPage() {
   const { data: lessons = [] } = useLessons();
   const { data: students = [] } = useStudents();
   const { data: blocks = [] } = useLessonBlocks();
+  const updateLesson = useUpdateLesson();
   const navigate = useNavigate();
 
-  // Default to most recent lesson month or current month
+  const [dragLessonId, setDragLessonId] = useState<string | null>(null);
+
   const initialMonth = useMemo(() => {
     if (lessons.length === 0) return new Date();
     const sorted = [...lessons].sort((a, b) => b.date.localeCompare(a.date));
@@ -54,7 +57,22 @@ export default function CalendarPage() {
 
   const [currentMonth, setCurrentMonth] = useState<Date>(initialMonth);
 
-  // Build a map of date -> lessons
+  // Build lesson index by block for class numbering
+  const lessonBlockIndex = useMemo(() => {
+    const index: Record<string, number> = {};
+    const byBlock: Record<string, typeof lessons> = {};
+    lessons.forEach((l) => {
+      if (!l.block_id) return;
+      if (!byBlock[l.block_id]) byBlock[l.block_id] = [];
+      byBlock[l.block_id].push(l);
+    });
+    Object.values(byBlock).forEach((blockLessons) => {
+      blockLessons.sort((a, b) => a.date.localeCompare(b.date));
+      blockLessons.forEach((l, i) => { index[l.id] = i + 1; });
+    });
+    return index;
+  }, [lessons]);
+
   const lessonsByDate = useMemo(() => {
     const map: Record<string, typeof lessons> = {};
     lessons.forEach((l) => {
@@ -64,7 +82,6 @@ export default function CalendarPage() {
     return map;
   }, [lessons]);
 
-  // Build calendar grid days
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
@@ -86,6 +103,19 @@ export default function CalendarPage() {
     }
     return result;
   }, [calendarDays]);
+
+  const handleDrop = useCallback(async (dateStr: string) => {
+    if (!dragLessonId) return;
+    const lesson = lessons.find((l) => l.id === dragLessonId);
+    if (!lesson || lesson.date === dateStr) { setDragLessonId(null); return; }
+    try {
+      await updateLesson.mutateAsync({ id: dragLessonId, date: dateStr });
+      toast.success(`Clase movida a ${dateStr}`);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+    setDragLessonId(null);
+  }, [dragLessonId, lessons, updateLesson]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] max-w-full">
@@ -129,7 +159,9 @@ export default function CalendarPage() {
               key={idx}
               className={`border-r border-b border-border p-1 flex flex-col min-h-0 transition-colors ${
                 !isCurrentMonth ? "bg-muted/30" : "bg-card/50 hover:bg-card/80"
-              }`}
+              } ${dragLessonId ? "hover:bg-primary/10" : ""}`}
+              onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+              onDrop={(e) => { e.preventDefault(); handleDrop(dateStr); }}
             >
               {/* Day number + add button */}
               <div className="flex items-center justify-between shrink-0 mb-0.5">
@@ -147,7 +179,7 @@ export default function CalendarPage() {
                 {isCurrentMonth && (
                   <button
                     onClick={() => navigate(`/generate-lesson?date=${dateStr}`)}
-                    className="opacity-0 group-hover:opacity-100 hover:!opacity-100 text-muted-foreground hover:text-primary transition-opacity h-5 w-5 flex items-center justify-center rounded hover:bg-primary/10"
+                    className="opacity-0 hover:!opacity-100 text-muted-foreground hover:text-primary transition-opacity h-5 w-5 flex items-center justify-center rounded hover:bg-primary/10"
                     style={{ opacity: dayLessons.length === 0 ? 0.3 : 0 }}
                     onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
                     onMouseLeave={(e) => (e.currentTarget.style.opacity = dayLessons.length === 0 ? "0.3" : "0")}
@@ -162,20 +194,39 @@ export default function CalendarPage() {
                 {dayLessons.map((lesson) => {
                   const student = students.find((s) => s.id === lesson.student_id);
                   const colorClass = student ? getStudentColor(student.id) : "bg-muted text-muted-foreground";
+                  const block = lesson.block_id ? blocks.find((b) => b.id === lesson.block_id) : null;
+                  const classNum = lessonBlockIndex[lesson.id];
+                  const mainTag = (lesson.grammar_focus ?? [])[0];
+
                   return (
-                    <Link
+                    <div
                       key={lesson.id}
-                      to={`/lessons/${lesson.id}`}
-                      className={`block rounded px-1.5 py-0.5 text-[10px] leading-tight truncate hover:ring-1 hover:ring-ring transition-all cursor-pointer ${colorClass} ${
-                        lesson.status === "completed" ? "opacity-90" : "opacity-70 border border-dashed border-current"
-                      }`}
-                      title={`${lesson.title} — ${student?.name ?? ""}`}
+                      draggable
+                      onDragStart={(e) => {
+                        setDragLessonId(lesson.id);
+                        e.dataTransfer.effectAllowed = "move";
+                      }}
+                      onDragEnd={() => setDragLessonId(null)}
+                      className="cursor-grab active:cursor-grabbing"
                     >
-                      <span className="font-medium truncate block">
-                        {lesson.status === "completed" ? "✓" : "○"}{" "}
-                        {student?.name?.split(" ")[0] ?? ""}
-                      </span>
-                    </Link>
+                      <Link
+                        to={`/lessons/${lesson.id}`}
+                        className={`block rounded px-1.5 py-0.5 text-[10px] leading-tight truncate hover:ring-1 hover:ring-ring transition-all ${colorClass} ${
+                          lesson.status === "completed" ? "opacity-90" : "opacity-70 border border-dashed border-current"
+                        }`}
+                        title={`${lesson.title} — ${student?.name ?? ""}`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span className="font-medium truncate block">
+                          {lesson.status === "completed" ? "✓" : "○"}{" "}
+                          {student?.name?.split(" ")[0] ?? ""}
+                          {block && classNum ? ` ${classNum}/${block.size}` : ""}
+                        </span>
+                        {mainTag && (
+                          <span className="block truncate opacity-80 text-[9px]">{mainTag}</span>
+                        )}
+                      </Link>
+                    </div>
                   );
                 })}
               </div>
@@ -188,6 +239,7 @@ export default function CalendarPage() {
       <div className="flex items-center gap-4 px-2 py-2 text-xs text-muted-foreground border-t border-border shrink-0">
         <span className="flex items-center gap-1">✓ Dictada</span>
         <span className="flex items-center gap-1 opacity-70 border border-dashed border-muted-foreground rounded px-1">○ Planificada</span>
+        <span className="text-[10px]">↕ Arrastrá para mover</span>
         {students.slice(0, 5).map((s) => (
           <span key={s.id} className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] ${getStudentColor(s.id)}`}>
             {s.name.split(" ")[0]}
