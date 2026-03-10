@@ -67,6 +67,37 @@ export function useCreateLessonBlock() {
   });
 }
 
+export function useUpdateLessonBlock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string } & Partial<TablesInsert<"lesson_blocks">>) => {
+      const { data, error } = await supabase
+        .from("lesson_blocks")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["lesson_blocks"] }),
+  });
+}
+
+export function useDeleteLessonBlock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("lesson_blocks").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["lesson_blocks"] });
+      qc.invalidateQueries({ queryKey: ["block_lesson_counts"] });
+    },
+  });
+}
+
 export function useIncrementBlockLesson() {
   const qc = useQueryClient();
   return useMutation({
