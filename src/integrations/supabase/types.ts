@@ -120,6 +120,47 @@ export type Database = {
           },
         ]
       }
+      lesson_drafts: {
+        Row: {
+          chat_messages: Json
+          created_at: string
+          draft_json: Json
+          id: string
+          selected_prev_lesson_id: string | null
+          student_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chat_messages?: Json
+          created_at?: string
+          draft_json?: Json
+          id?: string
+          selected_prev_lesson_id?: string | null
+          student_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chat_messages?: Json
+          created_at?: string
+          draft_json?: Json
+          id?: string
+          selected_prev_lesson_id?: string | null
+          student_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_drafts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lessons: {
         Row: {
           block_id: string | null
