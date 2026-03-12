@@ -1,11 +1,16 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Send, Loader2, Sparkles, BookOpen, CheckCircle2,
-  Edit3, Save, RotateCcw, Copy, Check, History, X, Printer
+  Edit3, Save, RotateCcw, Copy, Check, History, X, Printer, FileText, Calendar as CalendarIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useStudents } from "@/hooks/useStudents";
 import { useCreateLesson, useLessons } from "@/hooks/useLessons";
+import { useActiveBlock } from "@/hooks/useLessonBlocks";
+import { useLessonDrafts, useAutoSaveDraft, useDeleteDraft, type LessonDraftRow } from "@/hooks/useLessonDrafts";
+import { useAuth } from "@/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 
@@ -225,6 +230,10 @@ function renderValue(key: SectionKey, value: any): string {
   return String(value ?? "");
 }
 
+function todayStr(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
 // ─── Section Card ─────────────────────────────────────────────────────────────
 
 function SectionCard({
@@ -280,13 +289,21 @@ function SectionCard({
 
 // ─── Lesson header ────────────────────────────────────────────────────────────
 
-function LessonHeader({ draft }: { draft: LessonDraft }) {
+function LessonHeader({ draft, saveDate, onDateChange }: { draft: LessonDraft; saveDate: string; onDateChange: (d: string) => void }) {
   return (
     <div className="rounded-xl border border-border/60 bg-primary/5 p-4 mb-2">
       <h2 className="text-lg font-bold text-foreground">{draft.title}</h2>
-      <div className="flex flex-wrap gap-3 mt-1 text-sm text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-muted-foreground">
         <span>👤 {draft.studentName}</span>
-        <span>📅 {draft.date}</span>
+        <span className="flex items-center gap-1">
+          <CalendarIcon className="h-3.5 w-3.5" />
+          <input
+            type="date"
+            value={saveDate}
+            onChange={(e) => onDateChange(e.target.value)}
+            className="bg-transparent border-b border-dashed border-muted-foreground/40 text-sm text-foreground focus:outline-none focus:border-primary px-1"
+          />
+        </span>
         <span>🎯 {draft.level}</span>
       </div>
       <p className="mt-2 text-sm text-foreground/80 italic">{draft.objective}</p>
@@ -371,12 +388,50 @@ function PreviousLessonPicker({ studentId, selectedId, onSelect, lessons }: {
   );
 }
 
+// ─── Draft Resume Card ────────────────────────────────────────────────────────
+
+function DraftResumeCard({ draft, onResume, onDiscard }: {
+  draft: LessonDraftRow;
+  onResume: () => void;
+  onDiscard: () => void;
+}) {
+  const draftData = draft.draft_json as LessonDraft | null;
+  const updatedAt = new Date(draft.updated_at).toLocaleString("es-AR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+  return (
+    <div className="rounded-xl border border-amber-300/60 bg-amber-50/80 dark:bg-amber-900/20 p-4 space-y-2">
+      <div className="flex items-center gap-2">
+        <FileText className="h-4 w-4 text-amber-600" />
+        <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Borrador sin guardar</p>
+      </div>
+      {draftData?.title && (
+        <p className="text-xs text-amber-700 dark:text-amber-400 truncate">
+          {draftData.title} — {draftData.studentName}
+        </p>
+      )}
+      <p className="text-[10px] text-amber-600/70">Última edición: {updatedAt}</p>
+      <div className="flex gap-2 pt-1">
+        <Button size="sm" onClick={onResume} className="rounded-lg text-xs gap-1.5">
+          <RotateCcw className="h-3 w-3" /> Retomar
+        </Button>
+        <Button size="sm" variant="outline" onClick={onDiscard} className="rounded-lg text-xs">
+          Descartar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function LessonGenerator() {
+  const { user } = useAuth();
   const { data: students = [] } = useStudents();
   const { data: allLessons = [] } = useLessons();
   const createLesson = useCreateLesson?.();
+  const { data: existingDrafts = [] } = useLessonDrafts();
+  const deleteDraft = useDeleteDraft();
+  const queryClient = useQueryClient();
 
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -386,6 +441,8 @@ export default function LessonGenerator() {
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [saveDate, setSaveDate] = useState(todayStr());
+  const [dismissedDraftId, setDismissedDraftId] = useState<string | null>(null);
 
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedPrevLessonId, setSelectedPrevLessonId] = useState<string | null>(null);
@@ -393,6 +450,26 @@ export default function LessonGenerator() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-save
+  const { setDraftId, clearDraft } = useAutoSaveDraft({
+    draft,
+    messages,
+    studentId: selectedStudentId,
+    selectedPrevLessonId,
+    enabled: !!user && (messages.length > 0 || draft !== null) && !saved,
+  });
+
+  // Find active block for selected student
+  const studentForBlock = draft
+    ? students.find((s) => s.name.toLowerCase().includes(draft.studentName.toLowerCase()))
+    : students.find((s) => s.id === selectedStudentId);
+  const activeBlock = useActiveBlock(studentForBlock?.id);
+
+  // Resumable draft (show the most recent one if chat hasn't started)
+  const resumableDraft = existingDrafts.length > 0 && messages.length === 0 && !draft && dismissedDraftId !== existingDrafts[0]?.id
+    ? existingDrafts[0]
+    : null;
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -414,7 +491,7 @@ export default function LessonGenerator() {
         prevContext = `\n\nCLASE ANTERIOR SELECCIONADA:\n- Título: ${prev.title}\n- Fecha: ${prev.date}\n- Gramática trabajada: ${(prev.grammar_focus ?? []).join(", ") || "—"}\n- Vocabulario: ${(prev.vocabulary_focus ?? []).join(", ") || "—"}\n- Tarea pendiente: ${prev.homework ?? "sin tarea"}\n- Observaciones: ${prev.observations ?? "—"}`;
       }
     }
-    return `Alumnos:\n${studentsSummary}${prevContext}`;
+    return `Alumnos:\n${studentsSummary}${prevContext}\n\nFecha de hoy: ${new Date().toLocaleDateString("es-AR")}`;
   };
 
   const send = async (overrideInput?: string) => {
@@ -441,6 +518,7 @@ export default function LessonGenerator() {
       const parsedDraft = tryParseDraft(assistantContent);
       if (parsedDraft) {
         setDraft(parsedDraft);
+        setSaveDate(todayStr()); // Always default to today
         setMessages((prev) => [
           ...prev.slice(0, -1),
           {
@@ -493,11 +571,8 @@ export default function LessonGenerator() {
       const student = students.find((s) => s.name.toLowerCase().includes(draft.studentName.toLowerCase()));
       if (!student) { toast.error(`No encontré "${draft.studentName}".`); setIsSaving(false); return; }
 
-      let dateStr = new Date().toISOString().split("T")[0];
-      try {
-        const [d, m, y] = draft.date.split("/");
-        if (d && m && y) dateStr = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
-      } catch { }
+      // Use the date picker value (defaults to today), NOT the AI-generated date
+      const dateStr = saveDate || todayStr();
 
       await createLesson.mutateAsync({
         student_id: student.id,
@@ -518,8 +593,19 @@ export default function LessonGenerator() {
         homework: draft.homework,
         observations: draft.teacherNotes,
         status: "planned",
+        block_id: activeBlock?.id ?? null,
       } as any);
-      toast.success("Clase guardada ✓");
+
+      // Delete the draft from DB
+      await clearDraft();
+
+      // Invalidate all relevant queries so calendar, student profile, etc. update
+      queryClient.invalidateQueries({ queryKey: ["lessons"] });
+      queryClient.invalidateQueries({ queryKey: ["lesson_blocks"] });
+      queryClient.invalidateQueries({ queryKey: ["block_lesson_counts"] });
+      queryClient.invalidateQueries({ queryKey: ["lesson_drafts"] });
+
+      toast.success("Clase guardada ✓ — aparecerá en el calendario y perfil de la alumna");
       setSaved(true);
     } catch (e: any) {
       toast.error(e.message ?? "Error al guardar");
@@ -533,7 +619,7 @@ export default function LessonGenerator() {
     const lines = [
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
       draft.title,
-      `${draft.studentName} · ${draft.date} · ${draft.level}`,
+      `${draft.studentName} · ${saveDate} · ${draft.level}`,
       `Objetivo: ${draft.objective}`,
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
       "",
@@ -547,10 +633,33 @@ export default function LessonGenerator() {
     toast.success("Clase copiada al portapapeles");
   };
 
-  const resetAll = () => {
+  const resetAll = async () => {
+    await clearDraft();
     setMessages([]); setDraft(null); setEditState(null);
     setSaved(false); setSelectedStudentId(null); setSelectedPrevLessonId(null);
+    setSaveDate(todayStr()); setDismissedDraftId(null);
     setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
+  const resumeDraft = (row: LessonDraftRow) => {
+    setDraftId(row.id);
+    const chatMsgs = (row.chat_messages ?? []) as Msg[];
+    const draftData = row.draft_json as LessonDraft | null;
+    setMessages(chatMsgs);
+    if (draftData && draftData.title) setDraft(draftData);
+    if (row.student_id) setSelectedStudentId(row.student_id);
+    if (row.selected_prev_lesson_id) setSelectedPrevLessonId(row.selected_prev_lesson_id);
+    toast.success("Borrador retomado");
+  };
+
+  const discardDraft = async (row: LessonDraftRow) => {
+    try {
+      await deleteDraft.mutateAsync(row.id);
+      setDismissedDraftId(row.id);
+      toast.success("Borrador descartado");
+    } catch {
+      toast.error("Error al descartar");
+    }
   };
 
   const hasDraft = draft !== null;
@@ -569,7 +678,7 @@ export default function LessonGenerator() {
             </div>
             <div>
               <p className="text-sm font-semibold leading-none">Lesson Generator</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Chat con IA</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Chat con IA · auto-guardado</p>
             </div>
           </div>
           {chatStarted && (
@@ -593,6 +702,15 @@ export default function LessonGenerator() {
                   Te genero la clase completa, lista para imprimir.
                 </p>
               </div>
+
+              {/* Resume draft card */}
+              {resumableDraft && (
+                <DraftResumeCard
+                  draft={resumableDraft}
+                  onResume={() => resumeDraft(resumableDraft)}
+                  onDiscard={() => discardDraft(resumableDraft)}
+                />
+              )}
 
               {students.length > 0 && (
                 <div className="w-full">
@@ -773,7 +891,8 @@ export default function LessonGenerator() {
 
           {/* Lesson content */}
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
-            <LessonHeader draft={draft} />
+            <LessonHeader draft={draft} saveDate={saveDate} onDateChange={setSaveDate} />
+
             {SECTION_ORDER.map((key) => (
               <SectionCard
                 key={key}
