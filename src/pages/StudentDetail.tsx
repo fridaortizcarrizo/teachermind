@@ -219,23 +219,25 @@ export default function StudentDetail() {
         <TabsContent value="history" className="space-y-3 mt-4">
           {studentLessons.length === 0 && <p className="text-muted-foreground text-center py-8">No hay clases registradas.</p>}
           {studentLessons.map((lesson) => (
-            <GlassCard key={lesson.id} variant="subtle" className="py-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold">{lesson.title}</h3>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${lesson.status === 'completed' ? 'bg-emerald-500/20 text-emerald-800' : 'bg-amber-500/20 text-amber-800'}`}>
-                    {lesson.status}
-                  </span>
+            <Link key={lesson.id} to={`/lessons/${lesson.id}`}>
+              <GlassCard variant="subtle" className="py-4 hover:bg-white/20 transition-all cursor-pointer">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold">{lesson.title}</h3>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${lesson.status === 'completed' ? 'bg-emerald-500/20 text-emerald-800' : 'bg-amber-500/20 text-amber-800'}`}>
+                      {lesson.status}
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" />{lesson.date}</span>
                 </div>
-                <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" />{lesson.date}</span>
-              </div>
-              <p className="text-sm text-muted-foreground line-clamp-2">{lesson.objective}</p>
-              <div className="flex flex-wrap gap-1 mt-2">
-                {(lesson.grammar_focus ?? []).map((g) => <span key={g} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary">{g}</span>)}
-                {(lesson.vocabulary_focus ?? []).map((v) => <span key={v} className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent-foreground">{v}</span>)}
-              </div>
-              {lesson.homework && <p className="text-xs text-muted-foreground mt-2">📝 Tarea: {lesson.homework}</p>}
-            </GlassCard>
+                <p className="text-sm text-muted-foreground line-clamp-2">{lesson.objective}</p>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {(lesson.grammar_focus ?? []).map((g) => <span key={g} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary">{g}</span>)}
+                  {(lesson.vocabulary_focus ?? []).map((v) => <span key={v} className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent-foreground">{v}</span>)}
+                </div>
+                {lesson.homework && <p className="text-xs text-muted-foreground mt-2">📝 Tarea: {lesson.homework}</p>}
+              </GlassCard>
+            </Link>
           ))}
         </TabsContent>
 

@@ -49,7 +49,8 @@ export default function Dashboard() {
             {upcomingLessons.map((lesson) => {
               const student = students.find((s) => s.id === lesson.student_id);
               return (
-                <GlassCard key={lesson.id} className="flex items-center gap-4">
+                <Link to={`/lessons/${lesson.id}`}>
+                <GlassCard key={lesson.id} className="flex items-center gap-4 hover:bg-white/20 transition-all cursor-pointer">
                   <div className="rounded-xl bg-primary/10 p-3"><Calendar className="h-5 w-5 text-primary" /></div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -60,6 +61,7 @@ export default function Dashboard() {
                     <p className="text-xs text-muted-foreground mt-1">{(lesson.grammar_focus ?? []).join(", ")}</p>
                   </div>
                 </GlassCard>
+                </Link>
               );
             })}
             {upcomingLessons.length === 0 && (
