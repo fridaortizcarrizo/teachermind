@@ -1,8 +1,9 @@
 import { useState, useMemo, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useLessons, useUpdateLesson } from "@/hooks/useLessons";
 import { useStudents } from "@/hooks/useStudents";
 import { useLessonBlocks } from "@/hooks/useLessonBlocks";
+import { LessonFormDialog } from "@/components/lessons/LessonFormDialog";
 import {
   format,
   startOfMonth,
@@ -20,6 +21,9 @@ import { es } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import type { Tables } from "@/integrations/supabase/types";
+
+type Lesson = Tables<"lessons">;
 
 const DAY_LABELS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
@@ -45,9 +49,27 @@ export default function CalendarPage() {
   const { data: students = [] } = useStudents();
   const { data: blocks = [] } = useLessonBlocks();
   const updateLesson = useUpdateLesson();
-  const navigate = useNavigate();
 
   const [dragLessonId, setDragLessonId] = useState<string | null>(null);
+
+  // Form dialog state
+  const [formOpen, setFormOpen] = useState(false);
+  const [formDate, setFormDate] = useState<string>("");
+  const [editingLesson, setEditingLesson] = useState<Lesson | undefined>();
+
+  const openCreate = (dateStr: string) => {
+    setEditingLesson(undefined);
+    setFormDate(dateStr);
+    setFormOpen(true);
+  };
+
+  const openEdit = (lesson: Lesson, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEditingLesson(lesson);
+    setFormDate(lesson.date);
+    setFormOpen(true);
+  };
 
   const initialMonth = useMemo(() => {
     if (lessons.length === 0) return new Date();
@@ -57,7 +79,6 @@ export default function CalendarPage() {
 
   const [currentMonth, setCurrentMonth] = useState<Date>(initialMonth);
 
-  // Build lesson index by block for class numbering
   const lessonBlockIndex = useMemo(() => {
     const index: Record<string, number> = {};
     const byBlock: Record<string, typeof lessons> = {};
@@ -124,16 +145,27 @@ export default function CalendarPage() {
         <h1 className="text-2xl font-bold tracking-tight capitalize">
           {format(currentMonth, "MMMM yyyy", { locale: es })}
         </h1>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentMonth((m) => subMonths(m, 1))}>
-            <ChevronLeft className="h-4 w-4" />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 rounded-xl text-xs h-8"
+            onClick={() => openCreate(format(new Date(), "yyyy-MM-dd"))}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Cargar clase
           </Button>
-          <Button variant="ghost" size="sm" className="text-xs" onClick={() => setCurrentMonth(new Date())}>
-            Hoy
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentMonth((m) => addMonths(m, 1))}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentMonth((m) => subMonths(m, 1))}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="text-xs" onClick={() => setCurrentMonth(new Date())}>
+              Hoy
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentMonth((m) => addMonths(m, 1))}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -178,11 +210,12 @@ export default function CalendarPage() {
                 </span>
                 {isCurrentMonth && (
                   <button
-                    onClick={() => navigate(`/generate-lesson?date=${dateStr}`)}
+                    onClick={() => openCreate(dateStr)}
                     className="opacity-0 hover:!opacity-100 text-muted-foreground hover:text-primary transition-opacity h-5 w-5 flex items-center justify-center rounded hover:bg-primary/10"
                     style={{ opacity: dayLessons.length === 0 ? 0.3 : 0 }}
                     onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
                     onMouseLeave={(e) => (e.currentTarget.style.opacity = dayLessons.length === 0 ? "0.3" : "0")}
+                    title="Cargar clase"
                   >
                     <Plus className="h-3 w-3" />
                   </button>
@@ -207,7 +240,7 @@ export default function CalendarPage() {
                         e.dataTransfer.effectAllowed = "move";
                       }}
                       onDragEnd={() => setDragLessonId(null)}
-                      className="cursor-grab active:cursor-grabbing"
+                      className="cursor-grab active:cursor-grabbing group/chip relative"
                     >
                       <Link
                         to={`/lessons/${lesson.id}`}
@@ -226,6 +259,14 @@ export default function CalendarPage() {
                           <span className="block truncate opacity-80 text-[9px]">{mainTag}</span>
                         )}
                       </Link>
+                      {/* Edit button on chip hover */}
+                      <button
+                        onClick={(e) => openEdit(lesson, e)}
+                        className="absolute top-0 right-0 h-full px-1 opacity-0 group-hover/chip:opacity-100 transition-opacity flex items-center bg-gradient-to-l from-black/30 to-transparent rounded-r text-white"
+                        title="Editar"
+                      >
+                        <span className="text-[9px]">✏</span>
+                      </button>
                     </div>
                   );
                 })}
@@ -236,16 +277,24 @@ export default function CalendarPage() {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 px-2 py-2 text-xs text-muted-foreground border-t border-border shrink-0">
+      <div className="flex items-center gap-4 px-2 py-2 text-xs text-muted-foreground border-t border-border shrink-0 flex-wrap">
         <span className="flex items-center gap-1">✓ Dictada</span>
         <span className="flex items-center gap-1 opacity-70 border border-dashed border-muted-foreground rounded px-1">○ Planificada</span>
-        <span className="text-[10px]">↕ Arrastrá para mover</span>
+        <span className="text-[10px]">↕ Arrastrá para mover · ✏ hover para editar</span>
         {students.slice(0, 5).map((s) => (
           <span key={s.id} className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] ${getStudentColor(s.id)}`}>
             {s.name.split(" ")[0]}
           </span>
         ))}
       </div>
+
+      {/* Form Dialog */}
+      <LessonFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        defaultDate={formDate}
+        lesson={editingLesson}
+      />
     </div>
   );
 }
