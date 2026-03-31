@@ -11,12 +11,13 @@ import { useLessons } from "@/hooks/useLessons";
 import { useGrammarTopics } from "@/hooks/useGrammarTopics";
 import { useVocabulary } from "@/hooks/useVocabulary";
 import { useProgressNotes } from "@/hooks/useProgressNotes";
-import { ArrowLeft, Sparkles, BookOpen, AlertCircle, CheckCircle2, Clock, FileUp, ClipboardPaste, Layers, Edit3, Check, X } from "lucide-react";
+import { ArrowLeft, Sparkles, BookOpen, AlertCircle, CheckCircle2, Clock, FileUp, ClipboardPaste, Layers, Edit3, Check, X, Plus } from "lucide-react";
 import { useActiveBlock, useLessonBlocks, useBlockLessonCounts } from "@/hooks/useLessonBlocks";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { ImportLessonsDialog } from "@/components/students/ImportLessonsDialog";
 import { ImportQuestionnaireDialog } from "@/components/students/ImportQuestionnaireDialog";
+import { LessonFormDialog } from "@/components/lessons/LessonFormDialog";
 import { toast } from "sonner";
 
 const grammarStatusColors: Record<string, string> = {
@@ -112,6 +113,7 @@ export default function StudentDetail() {
   const { data: blockCounts = {} } = useBlockLessonCounts(activeBlockIds);
   const [importLessonsOpen, setImportLessonsOpen] = useState(false);
   const [importQuestionnaireOpen, setImportQuestionnaireOpen] = useState(false);
+  const [lessonFormOpen, setLessonFormOpen] = useState(false);
 
   const save = async (updates: Record<string, any>) => {
     if (!student) return;
@@ -180,6 +182,9 @@ export default function StudentDetail() {
           <Link to="/generate-lesson">
             <Button className="gap-2 rounded-xl w-full"><Sparkles className="h-4 w-4" />Generar Clase</Button>
           </Link>
+          <Button className="gap-2 rounded-xl" variant="outline" onClick={() => setLessonFormOpen(true)}>
+            <Plus className="h-4 w-4" />Cargar clase
+          </Button>
           <Button variant="outline" className="gap-2 rounded-xl" onClick={() => setImportQuestionnaireOpen(true)}>
             <ClipboardPaste className="h-4 w-4" />Actualizar perfil
           </Button>
@@ -292,6 +297,11 @@ export default function StudentDetail() {
 
       <ImportLessonsDialog open={importLessonsOpen} onOpenChange={setImportLessonsOpen} studentId={student.id} studentName={student.name} />
       <ImportQuestionnaireDialog open={importQuestionnaireOpen} onOpenChange={setImportQuestionnaireOpen} studentId={student.id} />
+      <LessonFormDialog
+        open={lessonFormOpen}
+        onOpenChange={setLessonFormOpen}
+        defaultStudentId={student.id}
+      />
     </div>
   );
 }
